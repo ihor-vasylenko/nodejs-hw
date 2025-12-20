@@ -4,7 +4,7 @@ import { Note } from '../models/note.js';
 export const getAllNotes = async (req, res) => {
   const { page = 1, perPage = 10, tag, search } = req.query;
   const skip = (page - 1) * perPage;
-  const notesQuery = Note.find();
+  const notesQuery = Note.find({ userId: req.user._id });
 
   if (search) notesQuery.where({ $text: { $search: search } });
   if (tag) notesQuery.where('tag').eq(tag);
@@ -21,37 +21,57 @@ export const getAllNotes = async (req, res) => {
 
 export const getNoteById = async (req, res, next) => {
   const { noteId } = req.params;
-  const note = await Note.findById(noteId);
+  const note = await Note.findOne({
+    _id: noteId,
+    userId: req.user._id,
+  });
+
   if (!note) {
     next(createHttpError(404, 'Note not found'));
     return;
   }
+
   res.status(200).json(note);
 };
 
 export const createNote = async (req, res) => {
-  const note = await Note.create(req.body);
-  res.status(201).json(note);
-};
+  const note = await Note.create({
+    ...req.body,
+    userId: req.user._id,
+  });
 
-export const deleteNote = async (req, res, next) => {
-  const { noteId } = req.params;
-  const note = await Note.findOneAndDelete({ _id: noteId });
-  if (!note) {
-    next(createHttpError(404, 'Note not found'));
-    return;
-  }
-  res.status(200).json(note);
+  res.status(201).json(note);
 };
 
 export const updateNote = async (req, res, next) => {
   const { noteId } = req.params;
-  const note = await Note.findOneAndUpdate({ _id: noteId }, req.body, {
-    new: true,
-  });
+  const note = await Note.findOneAndUpdate(
+    { _id: noteId, userId: req.user._id },
+    req.body,
+    {
+      new: true,
+    },
+  );
+
   if (!note) {
     next(createHttpError(404, 'Note not found'));
     return;
   }
+
+  res.status(200).json(note);
+};
+
+export const deleteNote = async (req, res, next) => {
+  const { noteId } = req.params;
+  const note = await Note.findOneAndDelete({
+    _id: noteId,
+    userId: req.user._id,
+  });
+
+  if (!note) {
+    next(createHttpError(404, 'Note not found'));
+    return;
+  }
+
   res.status(200).json(note);
 };
